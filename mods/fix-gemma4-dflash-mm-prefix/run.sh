@@ -1,10 +1,16 @@
 #!/bin/bash
 set -e
 
+MOD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PATCH_FILE="$MOD_DIR/gemma4-dflash-mm-prefix.patch"
+
 cd /usr/local/lib/python3.12/dist-packages
-echo "Applying PR #41703 (Gemma4 DFlash: draft attention must not inherit mm_prefix)"
-if curl -fsL https://patch-diff.githubusercontent.com/raw/vllm-project/vllm/pull/41703.diff | git apply --exclude="tests/*"; then
-  echo "- PR #41703 applied successfully"
+echo "Applying Gemma4 DFlash mm_prefix fix (curated from vLLM PR #41703, rebased to the container's vLLM nightly 7a9993878)"
+if git apply --check "$PATCH_FILE" 2>/dev/null; then
+  git apply "$PATCH_FILE"
+  echo "- patch applied successfully"
+elif git apply --reverse --check "$PATCH_FILE" 2>/dev/null; then
+  echo "- patch already applied, skipping"
 else
-  echo "- PR #41703 can't be applied, skipping"
+  echo "- patch does not apply to this vLLM build, skipping"
 fi

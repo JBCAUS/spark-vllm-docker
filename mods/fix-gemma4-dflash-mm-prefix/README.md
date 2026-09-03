@@ -22,8 +22,16 @@ requested `flash_attn` drafter backend then failed to resolve.
 Upstream vLLM PR [#41703](https://github.com/vllm-project/vllm/pull/41703)
 adds a `use_mm_prefix` override to `Attention` and a `DFlashAttention`
 subclass that opts draft layers out of the restriction. As of September
-2026 the PR is unmerged (labelled needs-rebase/stale); this mod applies
-its diff to the installed vLLM at container launch, excluding tests.
+2026 the PR is unmerged (labelled needs-rebase/stale).
+
+The raw PR diff (last rebased May 2026) does not apply to current vLLM
+nightlies. This mod instead carries `gemma4-dflash-mm-prefix.patch`, a
+two-file subset of the PR (attention.py use_mm_prefix kwarg + qwen3_dflash.py
+DFlashAttention subclass) rebased against the container's vLLM build
+(commit 7a9993878, 2026-08-26 nightly — verified by source sha256 match).
+The mod is idempotent: it applies cleanly, detects an already-applied
+patch, and skips gracefully if the container's vLLM changes shape again
+(will need a rebase against the new build at that point).
 
 ## Health check after launch
 
