@@ -1,0 +1,58 @@
+# Recipe: google/gemma-4-26B-A4B-it with DFlash speculative decoding
+# Gemma4-26B-A4B MoE model in BF16, using the z-lab DFlash block-diffusion drafter
+#
+# Requires mods/fix-gemma4-dflash-mm-prefix: unmerged vLLM PR #41703, without
+# which the draft model fails to load on Gemma4 targets ("mm_prefix requires
+# FlashAttention v4" ValueError at draft load).
+
+recipe_version: "1"
+name: Gemma4-26B-A4B-DFlash
+description: vLLM serving Gemma4-26B-A4B with DFlash speculative decoding
+
+# HuggingFace model to download (optional, for --download-model)
+model: google/gemma-4-26B-A4B-it
+
+solo_only: true
+
+# Container image to use
+container: vllm-node
+
+# Mod required to fix DFlash draft-model load on Gemma4 targets
+# (tracking https://github.com/vllm-project/vllm/pull/41703)
+mods:
+  - mods/fix-gemma4-dflash-mm-prefix
+
+# Default settings (can be overridden via CLI)
+defaults:
+  port: 8000
+  host: 0.0.0.0
+  tensor_parallel: 1
+  gpu_memory_utilization: 0.5
+  max_model_len: 262144
+  max_num_batched_tokens: 32768
+  max_num_seqs: 4
+  num_speculative_tokens: 15
+  speculative_attention_backend: flash_attn
+
+# Environment variables
+env: {}
+
+# The vLLM serve command template
+#
+# --served-model-name keeps the API model id aligned with the upstream
+# quick-start naming. Target attention stays on triton_attn (Gemma4's
+# multimodal-prefix restriction), drafter uses flash_attn per the z-lab
+# model card.
+command: |
+  vllm serve google/gemma-4-26B-A4B-it \
+    --served-model-name google/gemma-4-26B-A4B-it-dflash \
+    --port {port} \
+    --host {host} \
+    --tensor-parallel-size {tensor_parallel} \
+    --gpu-memory-utilization {gpu_memory_utilization} \
+    --max-model-len {max_model_len} \
+    --max-num-seqs {max_num_seqs} \
+    --max-num-batched-tokens {max_num_batched_tokens} \
+    --speculative-config '{{{{"method": "dflash", "model": "z-lab/gemma-4-26B-A4B-it-DFlash", "num_speculative_tokens": {num_speculative_tokens}, "attention_backend": "{speculative_attention_backend}"}}}}' \
+    --attention-backend triton_attn \
+    --trust-remote-code
